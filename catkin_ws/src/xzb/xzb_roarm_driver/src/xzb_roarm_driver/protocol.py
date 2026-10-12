@@ -53,19 +53,29 @@ def classify_line(line: str) -> ProtocolEvent:
             error="missing fields: " + ", ".join(missing),
         )
 
-    state = {
-        "x_m": float(payload["x"]) / 1000.0,
-        "y_m": float(payload["y"]) / 1000.0,
-        "z_m": float(payload["z"]) / 1000.0,
-        "base_rad": float(payload["b"]),
-        "shoulder_rad": float(payload["s"]),
-        "elbow_rad": float(payload["e"]),
-        "hand_rad": float(payload["t"]),
-        "torB": payload["torB"],
-        "torS": payload["torS"],
-        "torE": payload["torE"],
-        "torH": payload["torH"],
-    }
+    try:
+        state = {
+            "x_m": float(payload["x"]) / 1000.0,
+            "y_m": float(payload["y"]) / 1000.0,
+            "z_m": float(payload["z"]) / 1000.0,
+            "base_rad": float(payload["b"]),
+            "shoulder_rad": float(payload["s"]),
+            "elbow_rad": float(payload["e"]),
+            "hand_rad": float(payload["t"]),
+            "torB": payload["torB"],
+            "torS": payload["torS"],
+            "torE": payload["torE"],
+            "torH": payload["torH"],
+        }
+    except (TypeError, ValueError) as exc:
+        return ProtocolEvent(
+            kind="invalid_state",
+            raw=raw,
+            message_type=STATE_TYPE,
+            data=payload,
+            error="state position/joint fields must be numeric: " + str(exc),
+        )
+
     return ProtocolEvent(
         kind="state",
         raw=raw,
