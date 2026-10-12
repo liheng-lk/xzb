@@ -1,0 +1,8 @@
+[submodule "vendor/external/bingda_ros1_noetic"]
+	path = vendor/external/bingda_ros1_noetic
+	url = https://gitee.com/bingda_ai/bingda_ros1_noetic.git
+	branch = spider
+[submodule "vendor/external/realsense-ros"]
+	path = vendor/external/realsense-ros
+	url = https://github.com/realsenseai/realsense-ros.git
+	branch = ros1-legacy

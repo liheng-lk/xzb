@@ -1,0 +1,11 @@
+{
+  "app.name": "Xzb Intelligent Inspection Robot",
+  "status.idle": "Idle",
+  "status.patrol": "Patrolling",
+  "status.navigating": "Navigating",
+  "status.searching_trash": "Searching for trash",
+  "status.grasping": "Grasping",
+  "status.inspecting_door": "Inspecting door",
+  "status.inspecting_window": "Inspecting window",
+  "status.emergency_stop": "Emergency Stop"
+}

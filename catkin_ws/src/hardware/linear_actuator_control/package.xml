@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="1">
+  <name>linear_actuator_control</name>
+  <version>0.2.0</version>
+  <description>ROS1 Noetic serial bridge for an STM32F103RCT6 linear actuator and two ST3215 pan/tilt servos (v2 firmware).</description>
+
+  <maintainer email="1872373167@qq.com">charlie</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>python3-serial</run_depend>
+
+  <export/>
+</package>

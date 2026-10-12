@@ -1,0 +1,40 @@
+<launch>
+    <!-- Original names and arguments are retained for robotctl/camera_mast_manager. -->
+    <arg name="port" default="/dev/linear_actuator" />
+    <arg name="baudrate" default="115200" />
+    <arg name="cmd_topic" default="/linear_actuator/cmd" />
+    <arg name="status_topic" default="/linear_actuator/status" />
+    <arg name="resend_hz" default="10.0" />
+    <arg name="reconnect_sec" default="2.0" />
+    <arg name="max_motion_sec" default="20.0" />
+
+    <!-- UART2 baud is independent of the fixed 115200-baud PC connection. -->
+    <arg name="servo_cmd_topic" default="/linear_actuator/servo_cmd" />
+    <arg name="servo_baudrate" default="1000000" />
+    <!-- Firmware limits only. Set narrower limits for the actual camera bracket. -->
+    <arg name="pan_min_deg" default="0" />
+    <arg name="pan_max_deg" default="360" />
+    <arg name="tilt_min_deg" default="0" />
+    <arg name="tilt_max_deg" default="360" />
+
+    <node name="linear_actuator_node"
+          pkg="linear_actuator_control"
+          type="linear_actuator_node.py"
+          output="screen"
+          respawn="true"
+          respawn_delay="2.0">
+        <param name="port" value="$(arg port)" />
+        <param name="baudrate" value="$(arg baudrate)" />
+        <param name="cmd_topic" value="$(arg cmd_topic)" />
+        <param name="status_topic" value="$(arg status_topic)" />
+        <param name="resend_hz" value="$(arg resend_hz)" />
+        <param name="reconnect_sec" value="$(arg reconnect_sec)" />
+        <param name="max_motion_sec" value="$(arg max_motion_sec)" />
+        <param name="servo_cmd_topic" value="$(arg servo_cmd_topic)" />
+        <param name="servo_baudrate" value="$(arg servo_baudrate)" />
+        <param name="pan_min_deg" value="$(arg pan_min_deg)" />
+        <param name="pan_max_deg" value="$(arg pan_max_deg)" />
+        <param name="tilt_min_deg" value="$(arg tilt_min_deg)" />
+        <param name="tilt_max_deg" value="$(arg tilt_max_deg)" />
+    </node>
+</launch>

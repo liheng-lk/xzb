@@ -1,0 +1,11 @@
+<launch>
+    <!-- Light Detection Node -->
+    <node name="light_detection_node" pkg="door_detection" type="light_detection_node.py" output="screen">
+        <param name="min_valid" value="100"/>
+        <param name="max_valid" value="5000"/>
+        <param name="far_ratio" value="1.6"/>
+        <param name="gray_thresh" value="100"/>
+        <param name="save_images" value="true"/>
+    </node>
+</launch>
+

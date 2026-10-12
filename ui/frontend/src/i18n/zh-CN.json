@@ -1,0 +1,11 @@
+{
+  "app.name": "Xzb 智能巡检机器人",
+  "status.idle": "待机",
+  "status.patrol": "巡检中",
+  "status.navigating": "导航中",
+  "status.searching_trash": "正在寻找垃圾",
+  "status.grasping": "正在抓取",
+  "status.inspecting_door": "正在检查门",
+  "status.inspecting_window": "正在检查窗户",
+  "status.emergency_stop": "紧急停止"
+}

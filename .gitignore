@@ -1,0 +1,47 @@
+# ROS / Catkin
+catkin_ws/build/
+catkin_ws/devel/
+catkin_ws/logs/
+catkin_ws/.catkin_tools/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Runtime data
+data/rosbag/*
+data/episodes/*
+data/datasets/*
+data/demonstrations/*
+
+# Calibration private runtime output
+data/calibration/runtime/
+
+# AI weights
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.engine
+models/*.safetensors
+models/**/*.pt
+models/**/*.pth
+models/**/*.onnx
+models/**/*.engine
+models/**/*.safetensors
+
+# Logs
+*.log
+logs/
