@@ -3,10 +3,12 @@
   <arg name="max_joint_step" default="0.05" />
   <arg name="max_cartesian_axis_step" default="0.01" />
   <arg name="max_cartesian_norm" default="0.015" />
+  <arg name="enable_trajectory_server" default="false" />
   <node pkg="xzb_roarm_control" type="roarm_control_node.py" name="xzb_roarm_control" output="screen">
     <param name="state_timeout" value="$(arg state_timeout)" />
     <param name="max_joint_step" value="$(arg max_joint_step)" />
     <param name="max_cartesian_axis_step" value="$(arg max_cartesian_axis_step)" />
     <param name="max_cartesian_norm" value="$(arg max_cartesian_norm)" />
   </node>
+  <node if="$(arg enable_trajectory_server)" pkg="xzb_roarm_control" type="roarm_trajectory_server.py" name="roarm_trajectory_server" output="screen" />
 </launch>

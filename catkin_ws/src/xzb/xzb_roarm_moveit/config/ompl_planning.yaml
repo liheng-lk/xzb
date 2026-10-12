@@ -1,0 +1,8 @@
+planner_configs:
+  RRTConnect:
+    type: geometric::RRTConnect
+    range: 0.0
+hand:
+  planner_configs: [RRTConnect]
+  projection_evaluator: joints(base_link_to_link1,link1_to_link2)
+  longest_valid_segment_fraction: 0.01

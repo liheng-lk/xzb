@@ -1,0 +1,6 @@
+<launch>
+  <param name="robot_description" command="$(find xacro)/xacro '$(find xzb_description)/urdf/roarm_m2s.urdf.xacro'" />
+  <param name="robot_description_semantic" textfile="$(find xzb_roarm_moveit)/config/roarm.srdf" />
+  <rosparam command="load" file="$(find xzb_roarm_moveit)/config/kinematics.yaml" ns="robot_description_kinematics" />
+  <rosparam command="load" file="$(find xzb_roarm_moveit)/config/joint_limits.yaml" ns="robot_description_planning" />
+</launch>

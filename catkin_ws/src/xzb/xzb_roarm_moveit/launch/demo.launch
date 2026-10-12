@@ -1,0 +1,6 @@
+<launch>
+  <!-- Offline planning/IK smoke test. No hardware trajectory execution. -->
+  <include file="$(find xzb_roarm_moveit)/launch/move_group.launch">
+    <arg name="allow_trajectory_execution" value="false" />
+  </include>
+</launch>

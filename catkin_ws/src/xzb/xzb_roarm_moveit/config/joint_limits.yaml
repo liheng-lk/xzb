@@ -1,0 +1,23 @@
+default_velocity_scaling_factor: 0.1
+default_acceleration_scaling_factor: 0.1
+joint_limits:
+  base_link_to_link1:
+    has_velocity_limits: true
+    max_velocity: 0.5
+    has_acceleration_limits: true
+    max_acceleration: 0.5
+  link1_to_link2:
+    has_velocity_limits: true
+    max_velocity: 0.5
+    has_acceleration_limits: true
+    max_acceleration: 0.5
+  link2_to_link3:
+    has_velocity_limits: true
+    max_velocity: 0.5
+    has_acceleration_limits: true
+    max_acceleration: 0.5
+  link3_to_gripper_link:
+    has_velocity_limits: true
+    max_velocity: 0.5
+    has_acceleration_limits: true
+    max_acceleration: 0.5

@@ -6,14 +6,9 @@
   <maintainer email="liheng-lk@users.noreply.github.com">liheng-lk</maintainer>
   <license>MIT</license>
   <buildtool_depend>catkin</buildtool_depend>
-  <depend>geometry_msgs</depend>
-  <depend>rospy</depend>
-  <depend>sensor_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>std_srvs</depend>
-  <depend>xzb_interfaces</depend>
-  <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>xzb_description</exec_depend>
-  <exec_depend>xzb_roarm_driver</exec_depend>
+  <depend>actionlib</depend><depend>control_msgs</depend><depend>geometry_msgs</depend>
+  <depend>rospy</depend><depend>sensor_msgs</depend><depend>std_msgs</depend><depend>std_srvs</depend>
+  <depend>trajectory_msgs</depend><depend>xzb_interfaces</depend>
+  <exec_depend>python3-numpy</exec_depend><exec_depend>xzb_description</exec_depend><exec_depend>xzb_roarm_driver</exec_depend>
   <export/>
 </package>
