@@ -1,0 +1,8 @@
+<launch>
+  <arg name="tcp_xyz" default="0 0 0" />
+  <arg name="tcp_rpy" default="0 0 0" />
+  <arg name="camera_xyz" default="0 0 0" />
+  <arg name="camera_rpy" default="0 0 0" />
+  <param name="robot_description" command="$(find xacro)/xacro '$(find xzb_description)/urdf/roarm_m2s.urdf.xacro' tcp_xyz:='$(arg tcp_xyz)' tcp_rpy:='$(arg tcp_rpy)' camera_xyz:='$(arg camera_xyz)' camera_rpy:='$(arg camera_rpy)'" />
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="roarm_robot_state_publisher" output="screen" />
+</launch>

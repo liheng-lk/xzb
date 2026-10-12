@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="xzb_roarm_m2s">
+  <xacro:arg name="tcp_xyz" default="0 0 0"/>
+  <xacro:arg name="tcp_rpy" default="0 0 0"/>
+  <xacro:arg name="camera_xyz" default="0 0 0"/>
+  <xacro:arg name="camera_rpy" default="0 0 0"/>
+
+  <material name="arm_grey"><color rgba="0.65 0.65 0.65 1"/></material>
+  <material name="dark"><color rgba="0.15 0.15 0.15 1"/></material>
+
+  <link name="base_link">
+    <visual><origin xyz="0 0 0.06"/><geometry><cylinder radius="0.065" length="0.12"/></geometry><material name="dark"/></visual>
+    <collision><origin xyz="0 0 0.06"/><geometry><cylinder radius="0.07" length="0.12"/></geometry></collision>
+  </link>
+
+  <link name="link1">
+    <visual><origin xyz="0 0 -0.04"/><geometry><box size="0.075 0.075 0.09"/></geometry><material name="arm_grey"/></visual>
+    <collision><origin xyz="0 0 -0.04"/><geometry><box size="0.08 0.08 0.10"/></geometry></collision>
+  </link>
+  <joint name="base_link_to_link1" type="revolute">
+    <origin xyz="0.0100000008759151 0 0.123059270461044" rpy="0 0 0"/>
+    <parent link="base_link"/><child link="link1"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="-3.1416" upper="3.1416" effort="5" velocity="1.0"/>
+  </joint>
+
+  <link name="link2">
+    <visual><origin xyz="0.118 0 0"/><geometry><box size="0.25 0.055 0.055"/></geometry><material name="arm_grey"/></visual>
+    <collision><origin xyz="0.118 0 0"/><geometry><box size="0.255 0.065 0.065"/></geometry></collision>
+  </link>
+  <joint name="link1_to_link2" type="revolute">
+    <origin xyz="0 0 0" rpy="-1.5707963267949 -1.5707963267949 0"/>
+    <parent link="link1"/><child link="link2"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="-1.5708" upper="1.5708" effort="5" velocity="1.0"/>
+  </joint>
+
+  <link name="link3">
+    <visual><origin xyz="0 -0.11 0"/><geometry><box size="0.055 0.23 0.055"/></geometry><material name="arm_grey"/></visual>
+    <collision><origin xyz="0 -0.11 0"/><geometry><box size="0.065 0.24 0.065"/></geometry></collision>
+  </link>
+  <joint name="link2_to_link3" type="revolute">
+    <origin xyz="0.236815132922094 0.0300023995170449 0" rpy="0 0 1.5707963267949"/>
+    <parent link="link2"/><child link="link3"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.0" upper="3.1416" effort="5" velocity="1.0"/>
+  </joint>
+
+  <link name="gripper_link">
+    <visual><origin xyz="0.03 0 0"/><geometry><box size="0.07 0.045 0.04"/></geometry><material name="dark"/></visual>
+    <collision><origin xyz="0.03 0 0"/><geometry><box size="0.075 0.055 0.05"/></geometry></collision>
+  </link>
+  <joint name="link3_to_gripper_link" type="revolute">
+    <origin xyz="0.002906 -0.21599 -0.00066683" rpy="-1.5708 0 -1.5708"/>
+    <parent link="link3"/><child link="gripper_link"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="1.5" effort="2" velocity="1.0"/>
+  </joint>
+
+  <link name="hand_tcp"/>
+  <joint name="link3_to_hand_tcp" type="fixed">
+    <origin xyz="0.002 -0.2802 0" rpy="-1.5708 0 -1.5708"/>
+    <parent link="link3"/><child link="hand_tcp"/>
+  </joint>
+
+  <!-- Calibration hooks. Zero values mean UNCALIBRATED, not measured. -->
+  <link name="tcp_calibrated"/>
+  <joint name="hand_tcp_to_tcp_calibrated" type="fixed">
+    <origin xyz="$(arg tcp_xyz)" rpy="$(arg tcp_rpy)"/>
+    <parent link="hand_tcp"/><child link="tcp_calibrated"/>
+  </joint>
+
+  <link name="arm_camera_mount_link"/>
+  <joint name="hand_tcp_to_arm_camera_mount" type="fixed">
+    <origin xyz="$(arg camera_xyz)" rpy="$(arg camera_rpy)"/>
+    <parent link="hand_tcp"/><child link="arm_camera_mount_link"/>
+  </joint>
+</robot>
