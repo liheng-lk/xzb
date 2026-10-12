@@ -1,0 +1,11 @@
+# Presets are intentionally disabled for automatic execution until real-hardware validation.
+auto_execute: false
+official_reference_home:
+  validated: false
+  joints: [0.0, 0.0, 1.5708, 0.75]
+ready:
+  validated: false
+  joints: null
+stow:
+  validated: false
+  joints: null
