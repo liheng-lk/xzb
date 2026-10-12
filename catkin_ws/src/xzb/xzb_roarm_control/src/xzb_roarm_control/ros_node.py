@@ -110,7 +110,7 @@ class RoArmControlNode:
     def _move_joints_cb(self, req):
         response = self.types["MoveArmJointsResponse"]()
         try:
-            result = self.core.move_joints(req.values, req.relative, req.speed_scale or 0.1)
+            result = self.core.move_joints(req.values, req.relative, req.speed_scale)
             response.accepted = result.accepted; response.message = result.message; response.target = list(result.target)
         except (ControlRejected, SafetyError, ValueError) as exc:
             response.accepted = False; response.message = str(exc)
@@ -119,7 +119,7 @@ class RoArmControlNode:
     def _move_cartesian_cb(self, req):
         response = self.types["MoveArmCartesianResponse"]()
         try:
-            result = self.core.move_cartesian((req.target.x, req.target.y, req.target.z), req.relative, req.speed_scale or 0.1)
+            result = self.core.move_cartesian((req.target.x, req.target.y, req.target.z), req.relative, req.speed_scale)
             response.accepted = result.accepted; response.message = result.message; response.joint_target = list(result.target)
         except (ControlRejected, SafetyError, ValueError) as exc:
             response.accepted = False; response.message = str(exc)
@@ -128,7 +128,7 @@ class RoArmControlNode:
     def _gripper_cb(self, req):
         response = self.types["SetArmGripperResponse"]()
         try:
-            result = self.core.set_gripper(req.opening, req.speed_scale or 0.1)
+            result = self.core.set_gripper(req.opening, req.speed_scale)
             response.accepted = result.accepted; response.message = result.message; response.joint_target = result.target[3]
         except (ControlRejected, SafetyError, ValueError) as exc:
             response.accepted = False; response.message = str(exc)
