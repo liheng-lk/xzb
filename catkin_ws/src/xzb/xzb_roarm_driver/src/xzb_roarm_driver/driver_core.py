@@ -1,16 +1,12 @@
 from typing import Callable, Dict, List, Optional, Tuple
 
-from .protocol import classify_line, make_state_query
+from .protocol import classify_line, make_joint_command, make_state_query
 from .serial_transport import TransportDisconnected
 
 
 class ReadOnlyDriverCore:
-    def __init__(
-        self,
-        transport,
-        on_raw: Optional[Callable[[str], None]] = None,
-        on_state: Optional[Callable[[Dict], None]] = None,
-    ):
+    """Serial-facing core; historical name retained for compatibility."""
+    def __init__(self, transport, on_raw: Optional[Callable[[str], None]] = None, on_state: Optional[Callable[[Dict], None]] = None):
         self.transport = transport
         self.on_raw = on_raw
         self.on_state = on_state
@@ -32,26 +28,24 @@ class ReadOnlyDriverCore:
             return False
         return True
 
+    def send_joint_target(self, base, shoulder, elbow, hand, speed=0, acceleration=10) -> bool:
+        if not self.transport.connected:
+            return False
+        try:
+            self.transport.write(make_joint_command(base, shoulder, elbow, hand, speed=speed, acceleration=acceleration))
+        except TransportDisconnected:
+            return False
+        return True
+
 
 def joint_state_values(state: Dict) -> Tuple[List[str], List[float]]:
-    return (
-        ["base", "shoulder", "elbow", "hand"],
-        [
-            float(state["base_rad"]),
-            float(state["shoulder_rad"]),
-            float(state["elbow_rad"]),
-            float(state["hand_rad"]),
-        ],
-    )
+    return (["base", "shoulder", "elbow", "hand"], [float(state["base_rad"]), float(state["shoulder_rad"]), float(state["elbow_rad"]), float(state["hand_rad"])])
 
 
-def pose_values(state: Dict) -> Tuple[float, float, float, float, float, float, float]:
-    return (
-        float(state["x_m"]),
-        float(state["y_m"]),
-        float(state["z_m"]),
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-    )
+def position_values(state: Dict) -> Tuple[float, float, float]:
+    return float(state["x_m"]), float(state["y_m"]), float(state["z_m"])
+
+
+def pose_values(state: Dict):
+    x, y, z = position_values(state)
+    return x, y, z, 0.0, 0.0, 0.0, 1.0

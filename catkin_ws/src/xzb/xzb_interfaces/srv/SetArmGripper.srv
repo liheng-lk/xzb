@@ -1,0 +1,6 @@
+float64 opening
+float64 speed_scale
+---
+bool accepted
+string message
+float64 joint_target

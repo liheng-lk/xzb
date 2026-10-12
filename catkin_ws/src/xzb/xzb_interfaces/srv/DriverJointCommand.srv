@@ -1,0 +1,9 @@
+float64 base
+float64 shoulder
+float64 elbow
+float64 hand
+float64 speed
+float64 acceleration
+---
+bool accepted
+string message
