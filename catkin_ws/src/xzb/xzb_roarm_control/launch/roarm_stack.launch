@@ -1,0 +1,11 @@
+<launch>
+  <arg name="port" default="/dev/ttyUSB0" />
+  <arg name="query_rate" default="5.0" />
+  <include file="$(find xzb_roarm_driver)/launch/roarm_driver.launch">
+    <arg name="port" value="$(arg port)" />
+    <arg name="query_rate" value="$(arg query_rate)" />
+    <arg name="command_enable" value="true" />
+  </include>
+  <include file="$(find xzb_description)/launch/roarm_description.launch" />
+  <include file="$(find xzb_roarm_control)/launch/roarm_control.launch" />
+</launch>
