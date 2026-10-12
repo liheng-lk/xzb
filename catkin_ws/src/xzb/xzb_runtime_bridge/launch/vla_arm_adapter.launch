@@ -1,0 +1,10 @@
+<launch>
+  <arg name="dry_run" default="true" />
+  <arg name="hardware_enable" default="false" />
+  <arg name="allow_joint_mode" default="false" />
+  <node pkg="xzb_runtime_bridge" type="vla_arm_adapter_node.py" name="vla_arm_adapter" output="screen">
+    <param name="dry_run" value="$(arg dry_run)" />
+    <param name="hardware_enable" value="$(arg hardware_enable)" />
+    <param name="allow_joint_mode" value="$(arg allow_joint_mode)" />
+  </node>
+</launch>
