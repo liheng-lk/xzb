@@ -40,6 +40,13 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(event.message_type, 1051)
         self.assertIn('missing', event.error)
 
+    def test_non_numeric_state_is_invalid_state_not_exception(self):
+        line = '{"T":1051,"x":"bad","y":0,"z":0,"b":0,"s":0,"e":0,"t":0,"torB":0,"torS":0,"torE":0,"torH":0}'
+        event = classify_line(line)
+        self.assertEqual(event.kind, 'invalid_state')
+        self.assertEqual(event.message_type, 1051)
+        self.assertIn('numeric', event.error)
+
     def test_blank_line_is_ignored(self):
         event = classify_line('   ')
         self.assertEqual(event.kind, 'empty')
