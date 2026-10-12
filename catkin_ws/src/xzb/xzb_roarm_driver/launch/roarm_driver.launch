@@ -1,0 +1,20 @@
+<launch>
+  <arg name="port" default="/dev/ttyUSB0" />
+  <arg name="baud_rate" default="115200" />
+  <arg name="query_rate" default="2.0" />
+  <arg name="reconnect_interval" default="1.0" />
+  <arg name="serial_timeout" default="0.2" />
+  <arg name="joint_frame_id" default="roarm_base_link" />
+
+  <node pkg="xzb_roarm_driver"
+        type="roarm_driver_node.py"
+        name="xzb_roarm_driver"
+        output="screen">
+    <param name="port" value="$(arg port)" />
+    <param name="baud_rate" value="$(arg baud_rate)" />
+    <param name="query_rate" value="$(arg query_rate)" />
+    <param name="reconnect_interval" value="$(arg reconnect_interval)" />
+    <param name="serial_timeout" value="$(arg serial_timeout)" />
+    <param name="joint_frame_id" value="$(arg joint_frame_id)" />
+  </node>
+</launch>
