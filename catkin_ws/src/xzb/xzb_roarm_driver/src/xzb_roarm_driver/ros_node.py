@@ -50,6 +50,10 @@ class RoArmRosNode:
             "/roarm/raw_response", self.message_types["String"], queue_size=50
         )
 
+        # Publish a deterministic startup state before the background transport
+        # has had a chance to open the USB serial device.
+        self.connected_pub.publish(self.message_types["Bool"](data=False))
+
         self.transport = transport_factory(
             self.port,
             baud_rate=self.baud_rate,
