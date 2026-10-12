@@ -177,6 +177,11 @@ class RosNodeTests(unittest.TestCase):
         self.assertTrue(self.transport.started)
         self.assertAlmostEqual(self.ros.timer.duration, 0.5)
 
+    def test_connected_topic_starts_false_until_transport_confirms_connection(self):
+        messages = self.ros.publishers['/roarm/connected'].messages
+        self.assertGreaterEqual(len(messages), 1)
+        self.assertFalse(messages[0].data)
+
     def test_state_line_publishes_raw_joint_state_and_pose(self):
         line = '{"T":1051,"x":515.88,"y":-3.95,"z":-49.68,"b":-0.01,"s":1.59,"e":0.03,"t":1.69,"torB":36,"torS":104,"torE":92,"torH":300}'
         self.transport.on_line(line)
