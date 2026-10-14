@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from xzb_roarm_control.joint_mapping import controller_to_ros, ros_to_controller
+from xzb_roarm_control.joint_mapping import controller_to_ros, ros_to_controller, ros_joint_to_controller
 from xzb_roarm_control.safety import ArmSafety, SafetyError
 from xzb_roarm_control.kinematics import RoArmKinematics
 from xzb_roarm_control.control_core import ArmControlCore, ControlRejected
@@ -8,6 +8,9 @@ from xzb_roarm_control.control_core import ArmControlCore, ControlRejected
 class CoreTests(unittest.TestCase):
     def test_mapping_round_trip(self):
         x=(-.2,.3,1.1,2.4); self.assertTrue(np.allclose(ros_to_controller(controller_to_ros(x)),x))
+    def test_single_joint_mapping_matches_full_mapping(self):
+        ros=(.2,-.3,1.1,.7); full=ros_to_controller(ros)
+        for i,v in enumerate(ros): self.assertAlmostEqual(ros_joint_to_controller(i,v),full[i])
     def test_real_state_margin_does_not_relax_command_limit(self):
         s=ArmSafety(); s.validate_joint_state((.007,-1.5923,.03,1.44))
         with self.assertRaises(SafetyError): s.validate_joint_target((.007,-1.5923,.03,1.44))
