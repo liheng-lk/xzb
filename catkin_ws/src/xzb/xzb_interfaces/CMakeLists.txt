@@ -19,6 +19,7 @@ add_message_files(
 add_service_files(
   FILES
   DriverJointCommand.srv
+  DriverSingleJointCommand.srv
   MoveArmJoints.srv
   MoveArmCartesian.srv
   SetArmGripper.srv
