@@ -1,6 +1,13 @@
 from typing import Callable, Dict, List, Optional, Tuple
 
-from .protocol import classify_line, make_boot_mission_query, make_joint_command, make_single_joint_command, make_state_query
+from .protocol import (
+    classify_line,
+    make_boot_mission_query,
+    make_cartesian_command,
+    make_joint_command,
+    make_single_joint_command,
+    make_state_query,
+)
 from .serial_transport import TransportDisconnected
 
 
@@ -52,8 +59,6 @@ class ReadOnlyDriverCore:
         if not self._boot_capture_active:
             return
 
-        # Periodic T=105 telemetry can interleave with the firmware's textual
-        # mission dump. Preserve mission text while excluding telemetry traffic.
         if event.message_type in (105, 1051):
             return
 
@@ -74,7 +79,6 @@ class ReadOnlyDriverCore:
         return True
 
     def query_boot_mission(self) -> bool:
-        """Request the firmware's read-only boot.mission dump (T=602)."""
         if not self.transport.connected:
             return False
         self._boot_query_pending = True
@@ -101,6 +105,16 @@ class ReadOnlyDriverCore:
             return False
         try:
             self.transport.write(make_joint_command(base, shoulder, elbow, hand, speed=speed, acceleration=acceleration))
+        except TransportDisconnected:
+            return False
+        return True
+
+    def send_cartesian_target(self, x_mm, y_mm, z_mm, t_rad=3.14) -> bool:
+        """Dispatch the supplied RoArm source's native T=1041 Cartesian command."""
+        if not self.transport.connected:
+            return False
+        try:
+            self.transport.write(make_cartesian_command(x_mm, y_mm, z_mm, t_rad=t_rad))
         except TransportDisconnected:
             return False
         return True
