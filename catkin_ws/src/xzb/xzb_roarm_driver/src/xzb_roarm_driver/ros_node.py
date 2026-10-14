@@ -7,8 +7,15 @@ def _load_ros_dependencies():
     from geometry_msgs.msg import Point, Pose
     from sensor_msgs.msg import JointState
     from std_msgs.msg import Bool, String
-    from xzb_interfaces.srv import DriverJointCommand, DriverJointCommandResponse
-    return rospy, {"Bool": Bool, "String": String, "JointState": JointState, "Point": Point, "Pose": Pose, "DriverJointCommand": DriverJointCommand, "DriverJointCommandResponse": DriverJointCommandResponse}
+    from xzb_interfaces.srv import (
+        DriverJointCommand, DriverJointCommandResponse,
+        DriverSingleJointCommand, DriverSingleJointCommandResponse,
+    )
+    return rospy, {
+        "Bool": Bool, "String": String, "JointState": JointState, "Point": Point, "Pose": Pose,
+        "DriverJointCommand": DriverJointCommand, "DriverJointCommandResponse": DriverJointCommandResponse,
+        "DriverSingleJointCommand": DriverSingleJointCommand, "DriverSingleJointCommandResponse": DriverSingleJointCommandResponse,
+    }
 
 
 class RoArmRosNode:
@@ -45,8 +52,11 @@ class RoArmRosNode:
         self.transport.on_line = self._on_line
         self.transport.on_connection = self._on_connection
         self.command_service = None
+        self.single_command_service = None
         if "DriverJointCommand" in self.message_types and hasattr(self.rospy, "Service"):
             self.command_service = self.rospy.Service("/roarm/driver/joint_command", self.message_types["DriverJointCommand"], self._handle_joint_command)
+        if "DriverSingleJointCommand" in self.message_types and hasattr(self.rospy, "Service"):
+            self.single_command_service = self.rospy.Service("/roarm/driver/single_joint_command", self.message_types["DriverSingleJointCommand"], self._handle_single_joint_command)
         self.transport.start()
         self.query_timer = self.rospy.Timer(self.rospy.Duration(1.0 / self.query_rate), self._query_timer)
         self.rospy.on_shutdown(self.shutdown)
@@ -78,12 +88,27 @@ class RoArmRosNode:
             point = self.message_types["Point"](); point.x = px; point.y = py; point.z = pz
             self.position_pub.publish(point)
 
+    def _command_disabled_response(self, response):
+        response.accepted = False
+        response.message = "driver command path disabled; enable only behind xzb_roarm_control"
+        return response
+
+    def _handle_single_joint_command(self, req):
+        response = self.message_types["DriverSingleJointCommandResponse"]()
+        if not self.command_enable:
+            return self._command_disabled_response(response)
+        try:
+            accepted = self.core.send_single_joint_target(req.joint, req.rad, speed=req.speed, acceleration=req.acceleration)
+        except ValueError as exc:
+            response.accepted = False; response.message = str(exc); return response
+        response.accepted = bool(accepted)
+        response.message = "accepted" if accepted else "serial disconnected"
+        return response
+
     def _handle_joint_command(self, req):
         response = self.message_types["DriverJointCommandResponse"]()
         if not self.command_enable:
-            response.accepted = False
-            response.message = "driver command path disabled; enable only behind xzb_roarm_control"
-            return response
+            return self._command_disabled_response(response)
         try:
             accepted = self.core.send_joint_target(req.base, req.shoulder, req.elbow, req.hand, speed=req.speed, acceleration=req.acceleration)
         except ValueError as exc:
