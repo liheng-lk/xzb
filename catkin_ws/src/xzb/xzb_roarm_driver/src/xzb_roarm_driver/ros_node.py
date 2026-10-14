@@ -7,12 +7,14 @@ def _load_ros_dependencies():
     from geometry_msgs.msg import Point, Pose
     from sensor_msgs.msg import JointState
     from std_msgs.msg import Bool, String
+    from std_srvs.srv import Trigger, TriggerResponse
     from xzb_interfaces.srv import (
         DriverJointCommand, DriverJointCommandResponse,
         DriverSingleJointCommand, DriverSingleJointCommandResponse,
     )
     return rospy, {
         "Bool": Bool, "String": String, "JointState": JointState, "Point": Point, "Pose": Pose,
+        "Trigger": Trigger, "TriggerResponse": TriggerResponse,
         "DriverJointCommand": DriverJointCommand, "DriverJointCommandResponse": DriverJointCommandResponse,
         "DriverSingleJointCommand": DriverSingleJointCommand, "DriverSingleJointCommandResponse": DriverSingleJointCommandResponse,
     }
@@ -46,19 +48,28 @@ class RoArmRosNode:
             self.position_pub = self.rospy.Publisher("/roarm/position", self.message_types["Point"], queue_size=10)
         self.raw_pub = self.rospy.Publisher("/roarm/raw_response", self.message_types["String"], queue_size=50)
         self.tx_pub = self.rospy.Publisher("/roarm/raw_tx", self.message_types["String"], queue_size=50)
+        self.boot_mission_pub = self.rospy.Publisher("/roarm/boot_mission", self.message_types["String"], queue_size=1, latch=True)
         self.connected_pub.publish(self.message_types["Bool"](data=False))
 
         self.transport = transport_factory(self.port, baud_rate=self.baud_rate, timeout=self.serial_timeout, reconnect_interval=self.reconnect_interval)
-        self.core = ReadOnlyDriverCore(self.transport, on_raw=self._publish_raw, on_state=self._publish_state)
+        self.core = ReadOnlyDriverCore(
+            self.transport,
+            on_raw=self._publish_raw,
+            on_state=self._publish_state,
+            on_boot_mission=self._publish_boot_mission,
+        )
         self.transport.on_line = self._on_line
         self.transport.on_connection = self._on_connection
         self.transport.on_write = self._publish_tx
         self.command_service = None
         self.single_command_service = None
+        self.boot_mission_service = None
         if "DriverJointCommand" in self.message_types and hasattr(self.rospy, "Service"):
             self.command_service = self.rospy.Service("/roarm/driver/joint_command", self.message_types["DriverJointCommand"], self._handle_joint_command)
         if "DriverSingleJointCommand" in self.message_types and hasattr(self.rospy, "Service"):
             self.single_command_service = self.rospy.Service("/roarm/driver/single_joint_command", self.message_types["DriverSingleJointCommand"], self._handle_single_joint_command)
+        if "Trigger" in self.message_types and "TriggerResponse" in self.message_types and hasattr(self.rospy, "Service"):
+            self.boot_mission_service = self.rospy.Service("/roarm/driver/query_boot_mission", self.message_types["Trigger"], self._handle_boot_mission_query)
         self.transport.start()
         self.query_timer = self.rospy.Timer(self.rospy.Duration(1.0 / self.query_rate), self._query_timer)
         self.rospy.on_shutdown(self.shutdown)
@@ -74,6 +85,9 @@ class RoArmRosNode:
         else:
             text = str(payload)
         self.tx_pub.publish(self.message_types["String"](data=text.rstrip("\r\n")))
+
+    def _publish_boot_mission(self, text):
+        self.boot_mission_pub.publish(self.message_types["String"](data=text))
 
     def _publish_state(self, state):
         names, positions = joint_state_values(state)
@@ -100,6 +114,16 @@ class RoArmRosNode:
     def _command_disabled_response(self, response):
         response.accepted = False
         response.message = "driver command path disabled; enable only behind xzb_roarm_control"
+        return response
+
+    def _handle_boot_mission_query(self, _req):
+        response = self.message_types["TriggerResponse"]()
+        accepted = self.core.query_boot_mission()
+        response.success = bool(accepted)
+        response.message = (
+            "T602 boot.mission read-only query sent; result will be published on /roarm/boot_mission"
+            if accepted else "serial disconnected"
+        )
         return response
 
     def _handle_single_joint_command(self, req):
