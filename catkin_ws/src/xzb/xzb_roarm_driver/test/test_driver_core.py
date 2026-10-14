@@ -49,6 +49,55 @@ class DriverCoreTests(unittest.TestCase):
         self.assertFalse(core.query_state())
         self.assertEqual(transport.writes, [])
 
+    def test_query_boot_mission_sends_only_t602_when_connected(self):
+        transport = FakeTransport(connected=True)
+        core = ReadOnlyDriverCore(transport)
+        self.assertTrue(core.query_boot_mission())
+        self.assertEqual(transport.writes, [b'{"T":602}\n'])
+
+    def test_query_boot_mission_does_nothing_when_disconnected(self):
+        transport = FakeTransport(connected=False)
+        core = ReadOnlyDriverCore(transport)
+        self.assertFalse(core.query_boot_mission())
+        self.assertEqual(transport.writes, [])
+
+    def test_boot_mission_capture_publishes_complete_read_only_dump(self):
+        transport = FakeTransport(connected=True)
+        captures = []
+        core = ReadOnlyDriverCore(transport, on_boot_mission=captures.append)
+        self.assertTrue(core.query_boot_mission())
+
+        lines = [
+            '{"T":602}',
+            '---=== File Content ===---',
+            'reading file: [boot] starts:',
+            '',
+            '{"name":"boot","intro":"these cmds run automatically at boot."}',
+            '{"T":105}',
+            '{"T":1051,"x":1,"y":2,"z":3,"b":0,"s":0,"e":0,"t":0,"torB":0,"torS":0,"torE":0,"torH":0}',
+            '[StepNum: 1 ] - {"T":112,"mode":1,"b":50,"s":50,"e":50,"h":50}',
+            '^^^ ^^^ ^^^ reading file: boot.mission ends. ^^^ ^^^ ^^^',
+        ]
+        for line in lines:
+            core.handle_line(line)
+
+        self.assertEqual(len(captures), 1)
+        self.assertIn('---=== File Content ===---', captures[0])
+        self.assertIn('[StepNum: 1 ] - {"T":112', captures[0])
+        self.assertIn('reading file: boot.mission ends.', captures[0])
+        self.assertNotIn('{"T":105}\n', captures[0])
+        self.assertNotIn('{"T":1051', captures[0])
+
+    def test_boot_mission_file_not_found_is_reported_only_for_pending_query(self):
+        transport = FakeTransport(connected=True)
+        captures = []
+        core = ReadOnlyDriverCore(transport, on_boot_mission=captures.append)
+        core.handle_line('file not found.')
+        self.assertEqual(captures, [])
+        self.assertTrue(core.query_boot_mission())
+        core.handle_line('file not found.')
+        self.assertEqual(captures, ['file not found.'])
+
     def test_joint_state_values_preserve_controller_radians(self):
         state = {'base_rad': -0.1, 'shoulder_rad': 1.2, 'elbow_rad': 0.3, 'hand_rad': 1.6}
         names, positions = joint_state_values(state)
