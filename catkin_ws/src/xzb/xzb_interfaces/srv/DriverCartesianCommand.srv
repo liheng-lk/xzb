@@ -1,0 +1,7 @@
+float64 x_mm
+float64 y_mm
+float64 z_mm
+float64 t_rad
+---
+bool accepted
+string message
