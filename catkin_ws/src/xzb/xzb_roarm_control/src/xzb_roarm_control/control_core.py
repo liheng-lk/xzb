@@ -126,6 +126,8 @@ class ArmControlCore:
             raise ControlRejected("gripper opening must be in [0,1]")
         target = list(self.current_joints)
         target[3] = opening * 1.5
+        if self.single_dispatcher is not None:
+            return self._dispatch_single_target(3, tuple(target), speed_scale)
         return self._dispatch_target(tuple(target), speed_scale)
 
     def compute_fk(self, joints3):
