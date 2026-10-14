@@ -1,7 +1,7 @@
 import json
 import math
 import unittest
-from xzb_roarm_driver.protocol import make_joint_command, make_single_joint_command
+from xzb_roarm_driver.protocol import make_cartesian_command, make_joint_command, make_single_joint_command
 
 class ProtocolCommandTests(unittest.TestCase):
     def test_joint_command_exact_fields_and_newline(self):
@@ -14,6 +14,11 @@ class ProtocolCommandTests(unittest.TestCase):
         self.assertTrue(wire.endswith(b'\n'))
         self.assertEqual(json.loads(wire.decode()), {"T":101,"joint":1,"rad":-0.03,"spd":0.0,"acc":10.0})
 
+    def test_cartesian_command_matches_vendor_t1041(self):
+        wire = make_cartesian_command(235, 0, 234, 3.14)
+        self.assertTrue(wire.endswith(b'\n'))
+        self.assertEqual(json.loads(wire.decode()), {"T":1041,"x":235.0,"y":0.0,"z":234.0,"t":3.14})
+
     def test_single_joint_command_rejects_invalid_joint(self):
         with self.assertRaises(ValueError): make_single_joint_command(0, 0.1)
         with self.assertRaises(ValueError): make_single_joint_command(5, 0.1)
@@ -22,5 +27,6 @@ class ProtocolCommandTests(unittest.TestCase):
         with self.assertRaises(ValueError): make_joint_command(math.nan, 0, 0, 0)
         with self.assertRaises(ValueError): make_joint_command(0, 0, math.inf, 0)
         with self.assertRaises(ValueError): make_single_joint_command(1, math.nan)
+        with self.assertRaises(ValueError): make_cartesian_command(0, 0, math.inf, 3.14)
 
 if __name__ == '__main__': unittest.main()
