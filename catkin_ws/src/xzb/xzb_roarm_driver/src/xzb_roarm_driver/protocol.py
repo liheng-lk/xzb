@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 STATE_TYPE = 1051
 STATE_QUERY_TYPE = 105
+BOOT_MISSION_QUERY_TYPE = 602
 _STATE_FIELDS = ("x", "y", "z", "b", "s", "e", "t", "torB", "torS", "torE", "torH")
 
 
@@ -19,6 +20,15 @@ class ProtocolEvent:
 
 def make_state_query() -> bytes:
     return b'{"T":105}\n'
+
+
+def make_boot_mission_query() -> bytes:
+    """Return the only allowed boot-mission diagnostic request.
+
+    T=602 is read-only in the Waveshare firmware: it prints boot.mission
+    content and does not alter PID, torque, calibration, or motion targets.
+    """
+    return b'{"T":602}\n'
 
 
 def _finite_number(value, name: str) -> float:
