@@ -8,7 +8,7 @@ from xzb_interfaces.srv import ComputeArmFK, MoveArmCartesian, MoveArmJoints, Se
 
 
 def main():
-    p = argparse.ArgumentParser(description="Bounded RoArm hardware-test client")
+    p = argparse.ArgumentParser(description="RoArm ROS1 Noetic control client")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status"); sub.add_parser("enable"); sub.add_parser("disable"); sub.add_parser("soft-stop")
     j = sub.add_parser("joint-delta")
@@ -18,6 +18,9 @@ def main():
     c = sub.add_parser("cart-delta")
     c.add_argument("--x", type=float, default=0.0); c.add_argument("--y", type=float, default=0.0); c.add_argument("--z", type=float, default=0.0)
     c.add_argument("--speed", type=float, default=0.1)
+    ca = sub.add_parser("cart-abs")
+    ca.add_argument("x", type=float); ca.add_argument("y", type=float); ca.add_argument("z", type=float)
+    ca.add_argument("--speed", type=float, default=0.1)
     g = sub.add_parser("gripper"); g.add_argument("opening", type=float); g.add_argument("--speed", type=float, default=0.1)
     f = sub.add_parser("fk"); f.add_argument("base", type=float); f.add_argument("shoulder", type=float); f.add_argument("elbow", type=float)
     i = sub.add_parser("ik"); i.add_argument("x", type=float); i.add_argument("y", type=float); i.add_argument("z", type=float); i.add_argument("--seed", type=float, nargs=3, default=[0.0, 0.0, 1.5708])
@@ -33,6 +36,8 @@ def main():
         print(rospy.ServiceProxy("/roarm/move_joints", MoveArmJoints)([a.base, a.shoulder, a.elbow, a.gripper], True, a.speed)); return
     if a.cmd == "cart-delta":
         print(rospy.ServiceProxy("/roarm/move_cartesian", MoveArmCartesian)(Point(a.x, a.y, a.z), True, a.speed)); return
+    if a.cmd == "cart-abs":
+        print(rospy.ServiceProxy("/roarm/move_cartesian", MoveArmCartesian)(Point(a.x, a.y, a.z), False, a.speed)); return
     if a.cmd == "gripper":
         print(rospy.ServiceProxy("/roarm/set_gripper", SetArmGripper)(a.opening, a.speed)); return
     if a.cmd == "fk":
