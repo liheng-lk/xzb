@@ -34,6 +34,25 @@ class FakeSerial:
         self.closed = True
 
 
+class ConcurrentFakeSerial(FakeSerial):
+    def __init__(self):
+        super().__init__()
+        self._guard = threading.Lock()
+        self.active_writes = 0
+        self.max_active_writes = 0
+
+    def write(self, data):
+        with self._guard:
+            self.active_writes += 1
+            self.max_active_writes = max(self.max_active_writes, self.active_writes)
+        try:
+            time.sleep(0.02)
+            return super().write(data)
+        finally:
+            with self._guard:
+                self.active_writes -= 1
+
+
 class SerialTransportTests(unittest.TestCase):
     def test_connect_uses_115200_8n1_without_dtr_rts_calls(self):
         calls = []
@@ -74,6 +93,45 @@ class SerialTransportTests(unittest.TestCase):
         transport.write(b'{"T":105}\n')
         self.assertEqual(fake.writes, [b'{"T":105}\n'])
         self.assertEqual(fake.flush_count, 1)
+
+    def test_write_callback_observes_exact_payload_after_successful_flush(self):
+        fake = FakeSerial()
+        observed = []
+        transport = SerialTransport(
+            '/dev/ttyUSB0',
+            serial_factory=lambda **_: fake,
+            on_write=observed.append,
+        )
+        transport.connect()
+        payload = b'{"T":101,"joint":2,"rad":0.1,"spd":0,"acc":10}\n'
+        transport.write(payload)
+        self.assertEqual(observed, [payload])
+        self.assertEqual(fake.flush_count, 1)
+
+    def test_concurrent_writes_are_serialized(self):
+        fake = ConcurrentFakeSerial()
+        transport = SerialTransport('/dev/ttyUSB0', serial_factory=lambda **_: fake)
+        transport.connect()
+        barrier = threading.Barrier(3)
+        errors = []
+
+        def writer(payload):
+            try:
+                barrier.wait(timeout=1.0)
+                transport.write(payload)
+            except Exception as exc:
+                errors.append(exc)
+
+        first = threading.Thread(target=writer, args=(b'{"T":105}\n',))
+        second = threading.Thread(target=writer, args=(b'{"T":101,"joint":1,"rad":0.1,"spd":0,"acc":10}\n',))
+        first.start(); second.start(); barrier.wait(timeout=1.0)
+        first.join(timeout=1.0); second.join(timeout=1.0)
+
+        self.assertEqual(errors, [])
+        self.assertFalse(first.is_alive())
+        self.assertFalse(second.is_alive())
+        self.assertEqual(fake.max_active_writes, 1)
+        self.assertEqual(len(fake.writes), 2)
 
     def test_read_failure_disconnects_transport(self):
         fake = FakeSerial()
