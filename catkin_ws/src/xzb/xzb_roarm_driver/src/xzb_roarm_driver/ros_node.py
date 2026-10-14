@@ -45,12 +45,14 @@ class RoArmRosNode:
         if "Point" in self.message_types:
             self.position_pub = self.rospy.Publisher("/roarm/position", self.message_types["Point"], queue_size=10)
         self.raw_pub = self.rospy.Publisher("/roarm/raw_response", self.message_types["String"], queue_size=50)
+        self.tx_pub = self.rospy.Publisher("/roarm/raw_tx", self.message_types["String"], queue_size=50)
         self.connected_pub.publish(self.message_types["Bool"](data=False))
 
         self.transport = transport_factory(self.port, baud_rate=self.baud_rate, timeout=self.serial_timeout, reconnect_interval=self.reconnect_interval)
         self.core = ReadOnlyDriverCore(self.transport, on_raw=self._publish_raw, on_state=self._publish_state)
         self.transport.on_line = self._on_line
         self.transport.on_connection = self._on_connection
+        self.transport.on_write = self._publish_tx
         self.command_service = None
         self.single_command_service = None
         if "DriverJointCommand" in self.message_types and hasattr(self.rospy, "Service"):
@@ -65,6 +67,13 @@ class RoArmRosNode:
 
     def _publish_raw(self, line):
         self.raw_pub.publish(self.message_types["String"](data=line))
+
+    def _publish_tx(self, payload):
+        if isinstance(payload, bytes):
+            text = payload.decode("utf-8", errors="replace")
+        else:
+            text = str(payload)
+        self.tx_pub.publish(self.message_types["String"](data=text.rstrip("\r\n")))
 
     def _publish_state(self, state):
         names, positions = joint_state_values(state)
