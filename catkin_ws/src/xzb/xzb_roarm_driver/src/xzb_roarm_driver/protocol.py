@@ -31,6 +31,26 @@ def _finite_number(value, name: str) -> float:
     return number
 
 
+def make_single_joint_command(joint, rad, speed=0, acceleration=10) -> bytes:
+    if isinstance(joint, bool):
+        raise ValueError("joint must be one of 1,2,3,4")
+    try:
+        joint_number = int(joint)
+        joint_value = float(joint)
+    except (TypeError, ValueError):
+        raise ValueError("joint must be one of 1,2,3,4")
+    if joint_value != joint_number or joint_number not in (1, 2, 3, 4):
+        raise ValueError("joint must be one of 1,2,3,4")
+    payload = {
+        "T": 101,
+        "joint": joint_number,
+        "rad": _finite_number(rad, "rad"),
+        "spd": _finite_number(speed, "speed"),
+        "acc": _finite_number(acceleration, "acceleration"),
+    }
+    return (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
+
+
 def make_joint_command(base, shoulder, elbow, hand, speed=0, acceleration=10) -> bytes:
     payload = {
         "T": 102,
