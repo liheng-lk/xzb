@@ -42,6 +42,23 @@ class CoreTests(unittest.TestCase):
         c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
         result=c.move_joints((.01,.01,0,0),True)
         self.assertTrue(result.accepted); self.assertEqual(single,[]); self.assertEqual(full[-1],(.01,.01,1.5,.7))
+    def test_native_cartesian_delta_uses_controller_xyz_and_not_host_ik(self):
+        full=[]; native=[]; now=[0.0]
+        c=ArmControlCore(
+            lambda t,s:full.append(t) or True,
+            cartesian_dispatcher=lambda xyz,t,s:native.append((xyz,t,s)) or True,
+            clock=lambda:now[0],
+        )
+        c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.update_controller_position((.310,.0,.222)); c.set_motion_enabled(True)
+        result=c.move_cartesian((.005,0,0),True)
+        self.assertTrue(result.accepted); self.assertEqual(full,[])
+        self.assertEqual(native,[((.315,.0,.222),3.14,.1)])
+        self.assertEqual(result.target,(.315,.0,.222))
+    def test_native_cartesian_requires_controller_position_for_relative_move(self):
+        now=[0.0]
+        c=ArmControlCore(lambda t,s:True,cartesian_dispatcher=lambda xyz,t,s:True,clock=lambda:now[0])
+        c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
+        with self.assertRaises(ControlRejected): c.move_cartesian((.005,0,0),True)
     def test_stale_state_rejects_motion(self):
         now=[0.0]; c=ArmControlCore(lambda t,s:True,state_timeout=1,clock=lambda:now[0]); c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True); now[0]=2
         with self.assertRaises(ControlRejected): c.move_joints((.01,0,0,0),True)
