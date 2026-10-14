@@ -30,6 +30,12 @@ class CoreTests(unittest.TestCase):
         c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
         result=c.move_joints((.03,0,0,0),True)
         self.assertTrue(result.accepted); self.assertEqual(full,[]); self.assertEqual(single,[(0,.03,.1)])
+    def test_gripper_command_uses_single_dispatcher(self):
+        full=[]; single=[]; now=[0.0]
+        c=ArmControlCore(lambda t,s:full.append(t) or True,single_dispatcher=lambda i,t,s:single.append((i,t,s)) or True,clock=lambda:now[0])
+        c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
+        result=c.set_gripper(.48)
+        self.assertTrue(result.accepted); self.assertEqual(full,[]); self.assertEqual(single,[(3,.72,.1)])
     def test_multi_joint_delta_keeps_full_dispatcher(self):
         full=[]; single=[]; now=[0.0]
         c=ArmControlCore(lambda t,s:full.append(t) or True,single_dispatcher=lambda i,t,s:single.append((i,t,s)) or True,clock=lambda:now[0])
