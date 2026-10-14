@@ -5,3 +5,4 @@ float64 speed_scale
 bool accepted
 string message
 float64[4] joint_target
+geometry_msgs/Point cartesian_target
