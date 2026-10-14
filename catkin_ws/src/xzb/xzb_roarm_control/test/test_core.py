@@ -21,9 +21,18 @@ class CoreTests(unittest.TestCase):
     def test_absolute_large_jump_rejected(self):
         now=[0.0]; c=ArmControlCore(lambda t,s:True,clock=lambda:now[0]); c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
         with self.assertRaises(SafetyError): c.move_joints((.2,0,1.5,.7),relative=False)
-    def test_small_delta_accepted(self):
-        writes=[]; now=[0.0]; c=ArmControlCore(lambda t,s:writes.append(t) or True,clock=lambda:now[0]); c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
-        self.assertTrue(c.move_joints((.03,0,0,0),True).accepted); self.assertAlmostEqual(writes[-1][0],.03)
+    def test_single_joint_delta_uses_single_dispatcher(self):
+        full=[]; single=[]; now=[0.0]
+        c=ArmControlCore(lambda t,s:full.append(t) or True,single_dispatcher=lambda i,t,s:single.append((i,t,s)) or True,clock=lambda:now[0])
+        c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
+        result=c.move_joints((.03,0,0,0),True)
+        self.assertTrue(result.accepted); self.assertEqual(full,[]); self.assertEqual(single,[(0,.03,.1)])
+    def test_multi_joint_delta_keeps_full_dispatcher(self):
+        full=[]; single=[]; now=[0.0]
+        c=ArmControlCore(lambda t,s:full.append(t) or True,single_dispatcher=lambda i,t,s:single.append((i,t,s)) or True,clock=lambda:now[0])
+        c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
+        result=c.move_joints((.01,.01,0,0),True)
+        self.assertTrue(result.accepted); self.assertEqual(single,[]); self.assertEqual(full[-1],(.01,.01,1.5,.7))
     def test_stale_state_rejects_motion(self):
         now=[0.0]; c=ArmControlCore(lambda t,s:True,state_timeout=1,clock=lambda:now[0]); c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True); now[0]=2
         with self.assertRaises(ControlRejected): c.move_joints((.01,0,0,0),True)
