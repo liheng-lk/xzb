@@ -1,11 +1,14 @@
 import unittest
 
-from xzb_roarm_driver.protocol import classify_line, make_state_query
+from xzb_roarm_driver.protocol import classify_line, make_boot_mission_query, make_state_query
 
 
 class ProtocolTests(unittest.TestCase):
     def test_make_state_query_is_newline_delimited_json(self):
         self.assertEqual(make_state_query(), b'{"T":105}\n')
+
+    def test_make_boot_mission_query_is_exact_read_only_t602(self):
+        self.assertEqual(make_boot_mission_query(), b'{"T":602}\n')
 
     def test_classifies_t1051_state(self):
         line = '{"T":1051,"x":515.8803852,"y":-3.956830589,"z":-49.68354938,"b":-0.007669904,"s":1.592272058,"e":0.030679616,"t":1.695048771,"torB":36,"torS":104,"torE":92,"torH":300}'
