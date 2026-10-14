@@ -61,6 +61,18 @@ class DriverCoreTests(unittest.TestCase):
         self.assertFalse(core.query_boot_mission())
         self.assertEqual(transport.writes, [])
 
+    def test_cartesian_target_uses_vendor_t1041(self):
+        transport = FakeTransport(connected=True)
+        core = ReadOnlyDriverCore(transport)
+        self.assertTrue(core.send_cartesian_target(235, 0, 234, 3.14))
+        self.assertEqual(transport.writes, [b'{"T":1041,"x":235.0,"y":0.0,"z":234.0,"t":3.14}\n'])
+
+    def test_cartesian_target_rejected_when_disconnected(self):
+        transport = FakeTransport(connected=False)
+        core = ReadOnlyDriverCore(transport)
+        self.assertFalse(core.send_cartesian_target(235, 0, 234, 3.14))
+        self.assertEqual(transport.writes, [])
+
     def test_boot_mission_capture_publishes_complete_read_only_dump(self):
         transport = FakeTransport(connected=True)
         captures = []
