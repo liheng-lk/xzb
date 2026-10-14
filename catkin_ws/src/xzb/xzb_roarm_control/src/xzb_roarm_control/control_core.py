@@ -18,8 +18,9 @@ class CommandResult:
 
 
 class ArmControlCore:
-    def __init__(self, dispatcher, safety=None, kinematics=None, state_timeout=1.0, clock=None):
+    def __init__(self, dispatcher, single_dispatcher=None, safety=None, kinematics=None, state_timeout=1.0, clock=None):
         self.dispatcher = dispatcher
+        self.single_dispatcher = single_dispatcher
         self.safety = safety or ArmSafety()
         self.kinematics = kinematics or RoArmKinematics()
         self.state_timeout = float(state_timeout)
@@ -57,16 +58,35 @@ class ArmControlCore:
         if not self.motion_enabled:
             raise ControlRejected("motion disabled")
 
-    def _dispatch_target(self, target, speed_scale=0.1):
-        self._require_motion()
-        target = self.safety.validate_joint_target(target)
-        self.safety.validate_joint_delta(tuple(t - c for t, c in zip(target, self.current_joints)))
+    @staticmethod
+    def _validate_speed_scale(speed_scale):
         speed_scale = float(speed_scale)
         if not math.isfinite(speed_scale) or not (0.0 < speed_scale <= 1.0):
             raise ControlRejected("speed_scale must be in (0,1]")
+        return speed_scale
+
+    def _validate_target_from_current(self, target):
+        target = self.safety.validate_joint_target(target)
+        self.safety.validate_joint_delta(tuple(t - c for t, c in zip(target, self.current_joints)))
+        return tuple(target)
+
+    def _dispatch_single_target(self, joint_index, target, speed_scale=0.1):
+        self._require_motion()
+        target = self._validate_target_from_current(target)
+        speed_scale = self._validate_speed_scale(speed_scale)
+        if self.single_dispatcher is None:
+            return self._dispatch_target(target, speed_scale)
+        if not bool(self.single_dispatcher(int(joint_index), target[int(joint_index)], speed_scale)):
+            raise ControlRejected("driver rejected single-joint command")
+        return CommandResult(True, target, "accepted")
+
+    def _dispatch_target(self, target, speed_scale=0.1):
+        self._require_motion()
+        target = self._validate_target_from_current(target)
+        speed_scale = self._validate_speed_scale(speed_scale)
         if not bool(self.dispatcher(target, speed_scale)):
             raise ControlRejected("driver rejected command")
-        return CommandResult(True, tuple(target), "accepted")
+        return CommandResult(True, target, "accepted")
 
     def move_joints(self, values, relative=True, speed_scale=0.1):
         self._require_motion()
@@ -76,6 +96,9 @@ class ArmControlCore:
         if relative:
             self.safety.validate_joint_delta(vals)
             target = tuple(c + d for c, d in zip(self.current_joints, vals))
+            changed = [index for index, delta in enumerate(vals) if abs(delta) > 1e-12]
+            if len(changed) == 1 and self.single_dispatcher is not None:
+                return self._dispatch_single_target(changed[0], target, speed_scale)
         else:
             target = vals
         return self._dispatch_target(target, speed_scale)
