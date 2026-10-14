@@ -18,22 +18,28 @@ class CommandResult:
 
 
 class ArmControlCore:
-    def __init__(self, dispatcher, single_dispatcher=None, safety=None, kinematics=None, state_timeout=1.0, clock=None):
+    def __init__(self, dispatcher, single_dispatcher=None, cartesian_dispatcher=None,
+                 safety=None, kinematics=None, state_timeout=1.0, clock=None,
+                 native_cartesian_t=3.14):
         self.dispatcher = dispatcher
         self.single_dispatcher = single_dispatcher
+        self.cartesian_dispatcher = cartesian_dispatcher
         self.safety = safety or ArmSafety()
         self.kinematics = kinematics or RoArmKinematics()
         self.state_timeout = float(state_timeout)
         self.clock = clock or time.monotonic
+        self.native_cartesian_t = float(native_cartesian_t)
         self.connected = False
         self.motion_enabled = False
         self.current_joints = None
+        self.current_controller_position = None
         self.last_state_time = None
 
     def set_connected(self, connected):
         self.connected = bool(connected)
         if not self.connected:
             self.motion_enabled = False
+            self.current_controller_position = None
 
     def set_motion_enabled(self, enabled):
         if enabled and (not self.connected or self.current_joints is None or self.is_stale()):
@@ -44,6 +50,13 @@ class ArmControlCore:
     def update_joint_state(self, values):
         self.current_joints = self.safety.validate_joint_state(values)
         self.last_state_time = self.clock()
+
+    def update_controller_position(self, xyz):
+        values = tuple(float(v) for v in xyz)
+        if len(values) != 3 or not all(math.isfinite(v) for v in values):
+            raise ControlRejected("controller Cartesian state must contain 3 finite values")
+        self.current_controller_position = values
+        return values
 
     def is_stale(self):
         return self.last_state_time is None or (self.clock() - self.last_state_time) > self.state_timeout
@@ -105,6 +118,24 @@ class ArmControlCore:
 
     def move_cartesian(self, target_xyz, relative=True, speed_scale=0.1):
         self._require_motion()
+        speed_scale = self._validate_speed_scale(speed_scale)
+
+        if self.cartesian_dispatcher is not None:
+            if relative:
+                delta = self.safety.validate_cartesian_delta(target_xyz)
+                if self.current_controller_position is None:
+                    raise ControlRejected("no controller Cartesian state")
+                goal = tuple(c + d for c, d in zip(self.current_controller_position, delta))
+            else:
+                goal = tuple(float(v) for v in target_xyz)
+                if len(goal) != 3 or not all(math.isfinite(v) for v in goal):
+                    raise ControlRejected("Cartesian target must contain 3 finite values")
+            if not bool(self.cartesian_dispatcher(goal, self.native_cartesian_t, speed_scale)):
+                raise ControlRejected("driver rejected native Cartesian command")
+            return CommandResult(True, tuple(goal), "accepted via native T1041")
+
+        # Offline/model fallback: retain host FK/IK for kinematics tests and MoveIt
+        # tooling, but real hardware uses the source-compatible T=1041 path above.
         if relative:
             delta = self.safety.validate_cartesian_delta(target_xyz)
             current_xyz = self.kinematics.forward(self.current_joints[:3]).position
