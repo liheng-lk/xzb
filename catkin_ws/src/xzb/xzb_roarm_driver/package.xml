@@ -10,6 +10,7 @@
   <depend>rospy</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>xzb_interfaces</depend>
   <exec_depend>python3-serial</exec_depend>
   <export/>
