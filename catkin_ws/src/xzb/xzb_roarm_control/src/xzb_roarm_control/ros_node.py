@@ -7,13 +7,14 @@ from .safety import ArmSafety, SafetyError
 
 def _load_ros():
     import rospy
-    from geometry_msgs.msg import PoseStamped
+    from geometry_msgs.msg import Point, PoseStamped
     from sensor_msgs.msg import JointState
     from std_msgs.msg import Bool
     from std_srvs.srv import SetBool, SetBoolResponse, Trigger, TriggerResponse
     from xzb_interfaces.msg import ArmStatus
     from xzb_interfaces.srv import (
-        ComputeArmFK, ComputeArmFKResponse, DriverJointCommand, DriverSingleJointCommand,
+        ComputeArmFK, ComputeArmFKResponse,
+        DriverCartesianCommand, DriverJointCommand, DriverSingleJointCommand,
         MoveArmCartesian, MoveArmCartesianResponse, MoveArmJoints, MoveArmJointsResponse,
         SetArmGripper, SetArmGripperResponse, SolveArmIK, SolveArmIKResponse,
     )
@@ -33,17 +34,21 @@ class RoArmControlNode:
         )
         self.driver = rospy.ServiceProxy("/roarm/driver/joint_command", types["DriverJointCommand"])
         self.single_driver = rospy.ServiceProxy("/roarm/driver/single_joint_command", types["DriverSingleJointCommand"])
+        self.cartesian_driver = rospy.ServiceProxy("/roarm/driver/cartesian_command", types["DriverCartesianCommand"])
         self.core = ArmControlCore(
             self._dispatch,
             single_dispatcher=self._dispatch_single,
+            cartesian_dispatcher=self._dispatch_cartesian,
             safety=safety,
             state_timeout=rospy.get_param("~state_timeout", 1.0),
+            native_cartesian_t=rospy.get_param("~native_cartesian_t", 3.14),
         )
         self.joint_pub = rospy.Publisher("/joint_states", types["JointState"], queue_size=10)
         self.tool_pose_pub = rospy.Publisher("/roarm/tool_pose", types["PoseStamped"], queue_size=10)
         self.status_pub = rospy.Publisher("/roarm/status", types["ArmStatus"], queue_size=5, latch=True)
         rospy.Subscriber("/roarm/connected", types["Bool"], self._connected_cb, queue_size=5)
         rospy.Subscriber("/roarm/controller_joint_states", types["JointState"], self._controller_state_cb, queue_size=10)
+        rospy.Subscriber("/roarm/position", types["Point"], self._controller_position_cb, queue_size=10)
         rospy.Service("/roarm/motion_enable", types["SetBool"], self._enable_cb)
         rospy.Service("/roarm/soft_stop", types["Trigger"], self._stop_cb)
         rospy.Service("/roarm/move_joints", types["MoveArmJoints"], self._move_joints_cb)
@@ -55,14 +60,22 @@ class RoArmControlNode:
 
     def _dispatch(self, target, speed_scale):
         c = ros_to_controller(target)
-        # Protocol spd remains 0 until its physical scale is characterized.
         response = self.driver(base=c[0], shoulder=c[1], elbow=c[2], hand=c[3], speed=0.0, acceleration=10.0)
         return response.accepted
 
     def _dispatch_single(self, joint_index, target_value, speed_scale):
         controller_rad = ros_joint_to_controller(joint_index, target_value)
-        # Firmware joint IDs are 1=base, 2=shoulder, 3=elbow, 4=EOAT.
         response = self.single_driver(joint=int(joint_index) + 1, rad=controller_rad, speed=0.0, acceleration=10.0)
+        return response.accepted
+
+    def _dispatch_cartesian(self, xyz_m, t_rad, speed_scale):
+        # The supplied RoArm Python source uses T=1041 with XYZ in millimetres.
+        response = self.cartesian_driver(
+            x_mm=float(xyz_m[0]) * 1000.0,
+            y_mm=float(xyz_m[1]) * 1000.0,
+            z_mm=float(xyz_m[2]) * 1000.0,
+            t_rad=float(t_rad),
+        )
         return response.accepted
 
     def _publish_status(self, state="idle", detail=""):
@@ -78,6 +91,12 @@ class RoArmControlNode:
     def _connected_cb(self, msg):
         self.core.set_connected(msg.data)
         self._publish_status("idle" if msg.data else "disconnected", "")
+
+    def _controller_position_cb(self, msg):
+        try:
+            self.core.update_controller_position((msg.x, msg.y, msg.z))
+        except (ControlRejected, ValueError) as exc:
+            self.rospy.logwarn_throttle(5.0, "Rejected RoArm controller Cartesian state: %s", exc)
 
     def _controller_state_cb(self, msg):
         if len(msg.position) < 4:
@@ -132,7 +151,13 @@ class RoArmControlNode:
         response = self.types["MoveArmCartesianResponse"]()
         try:
             result = self.core.move_cartesian((req.target.x, req.target.y, req.target.z), req.relative, req.speed_scale)
-            response.accepted = result.accepted; response.message = result.message; response.joint_target = list(result.target)
+            response.accepted = result.accepted
+            response.message = result.message
+            # Native T1041 resolves IK inside the RoArm controller, so there is
+            # no host-side joint target at dispatch time. Preserve this legacy
+            # field with the latest measured state and report the real XYZ goal.
+            response.joint_target = list(self.core.current_joints or (0.0, 0.0, 0.0, 0.0))
+            response.cartesian_target.x, response.cartesian_target.y, response.cartesian_target.z = result.target
         except (ControlRejected, SafetyError, ValueError) as exc:
             response.accepted = False; response.message = str(exc)
         return response
