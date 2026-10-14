@@ -1,0 +1,7 @@
+uint8 joint
+float64 rad
+float64 speed
+float64 acceleration
+---
+bool accepted
+string message
