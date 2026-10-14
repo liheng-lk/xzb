@@ -13,6 +13,25 @@ def controller_to_ros(values):
     return (-b, -s, e, math.pi - t)
 
 
+def ros_joint_to_controller(index, value):
+    index = int(index)
+    value = float(value)
+    if index == 0:
+        return -value
+    if index == 1:
+        return -value
+    if index == 2:
+        return value
+    if index == 3:
+        return math.pi - value
+    raise ValueError("joint index must be in [0,3]")
+
+
 def ros_to_controller(values):
     base, shoulder, elbow, gripper = [float(v) for v in values]
-    return (-base, -shoulder, elbow, math.pi - gripper)
+    return (
+        ros_joint_to_controller(0, base),
+        ros_joint_to_controller(1, shoulder),
+        ros_joint_to_controller(2, elbow),
+        ros_joint_to_controller(3, gripper),
+    )
