@@ -9,8 +9,14 @@ class DriverCommandTests(unittest.TestCase):
     def test_disconnected_joint_command_rejected(self):
         t=Transport(False); c=ReadOnlyDriverCore(t)
         self.assertFalse(c.send_joint_target(0,0,1,2.5)); self.assertEqual(t.writes,[])
+        self.assertFalse(c.send_single_joint_target(1,0.1)); self.assertEqual(t.writes,[])
+
     def test_joint_command_writes_t102(self):
         t=Transport(True); c=ReadOnlyDriverCore(t)
         self.assertTrue(c.send_joint_target(0.1,-0.2,0.3,2.8)); self.assertIn(b'"T":102',t.writes[0])
+
+    def test_single_joint_command_writes_t101(self):
+        t=Transport(True); c=ReadOnlyDriverCore(t)
+        self.assertTrue(c.send_single_joint_target(2,-0.2)); self.assertIn(b'"T":101',t.writes[0]); self.assertIn(b'"joint":2',t.writes[0])
 
 if __name__ == '__main__': unittest.main()
