@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List, Optional, Tuple
 
-from .protocol import classify_line, make_joint_command, make_state_query
+from .protocol import classify_line, make_joint_command, make_single_joint_command, make_state_query
 from .serial_transport import TransportDisconnected
 
 
@@ -24,6 +24,15 @@ class ReadOnlyDriverCore:
             return False
         try:
             self.transport.write(make_state_query())
+        except TransportDisconnected:
+            return False
+        return True
+
+    def send_single_joint_target(self, joint, rad, speed=0, acceleration=10) -> bool:
+        if not self.transport.connected:
+            return False
+        try:
+            self.transport.write(make_single_joint_command(joint, rad, speed=speed, acceleration=acceleration))
         except TransportDisconnected:
             return False
         return True
