@@ -22,6 +22,7 @@ class SerialTransport:
         reconnect_interval: float = 1.0,
         on_line: Optional[Callable[[str], None]] = None,
         on_connection: Optional[Callable[[bool], None]] = None,
+        on_write: Optional[Callable[[bytes], None]] = None,
         serial_factory=None,
     ):
         self.port = port
@@ -30,9 +31,13 @@ class SerialTransport:
         self.reconnect_interval = reconnect_interval
         self.on_line = on_line
         self.on_connection = on_connection
+        self.on_write = on_write
         self._serial_factory = serial_factory or _pyserial_factory
         self._serial = None
         self._lock = threading.Lock()
+        # rospy timers/services may call write() from different threads. Keep
+        # complete JSON frames + flush atomic with respect to other writers.
+        self._write_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread = None
 
@@ -44,6 +49,10 @@ class SerialTransport:
     def _notify_connection(self, value: bool) -> None:
         if self.on_connection is not None:
             self.on_connection(value)
+
+    def _notify_write(self, payload: bytes) -> None:
+        if self.on_write is not None:
+            self.on_write(payload)
 
     def connect(self) -> None:
         if self.connected:
@@ -62,14 +71,17 @@ class SerialTransport:
         self._notify_connection(True)
 
     def _mark_disconnected(self) -> None:
-        with self._lock:
-            ser = self._serial
-            self._serial = None
-        if ser is not None:
-            try:
-                ser.close()
-            except Exception:
-                pass
+        # Do not close a pyserial object while another thread is midway through
+        # a frame write/flush.
+        with self._write_lock:
+            with self._lock:
+                ser = self._serial
+                self._serial = None
+            if ser is not None:
+                try:
+                    ser.close()
+                except Exception:
+                    pass
         self._notify_connection(False)
 
     def close(self) -> None:
@@ -95,18 +107,30 @@ class SerialTransport:
         return raw.decode("utf-8", errors="replace").rstrip("\r\n")
 
     def write(self, payload: bytes) -> None:
-        with self._lock:
-            ser = self._serial
-        if ser is None or not bool(getattr(ser, "is_open", True)):
+        failure = None
+        unavailable = False
+        with self._write_lock:
+            with self._lock:
+                ser = self._serial
+            if ser is None or not bool(getattr(ser, "is_open", True)):
+                unavailable = True
+            else:
+                try:
+                    ser.write(payload)
+                    ser.flush()
+                except (OSError, IOError) as exc:
+                    failure = exc
+                else:
+                    # TX audit is emitted only after the full frame has been
+                    # accepted and flushed, and stays ordered with writes.
+                    self._notify_write(payload)
+
+        if unavailable:
             self._mark_disconnected()
             raise TransportDisconnected("serial port is not connected")
-
-        try:
-            ser.write(payload)
-            ser.flush()
-        except (OSError, IOError) as exc:
+        if failure is not None:
             self._mark_disconnected()
-            raise TransportDisconnected(str(exc)) from exc
+            raise TransportDisconnected(str(failure)) from failure
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
