@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 STATE_TYPE = 1051
 STATE_QUERY_TYPE = 105
 BOOT_MISSION_QUERY_TYPE = 602
+CARTESIAN_DIRECT_TYPE = 1041
 _STATE_FIELDS = ("x", "y", "z", "b", "s", "e", "t", "torB", "torS", "torE", "torH")
 
 
@@ -70,6 +71,22 @@ def make_joint_command(base, shoulder, elbow, hand, speed=0, acceleration=10) ->
         "hand": _finite_number(hand, "hand"),
         "spd": _finite_number(speed, "speed"),
         "acc": _finite_number(acceleration, "acceleration"),
+    }
+    return (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+def make_cartesian_command(x_mm, y_mm, z_mm, t_rad=3.14) -> bytes:
+    """Match the supplied RoArm Python source's direct Cartesian command.
+
+    The vendor/user source drives horizontal/vertical drag with T=1041 and
+    millimetre XYZ coordinates. Keep that wire contract unchanged here.
+    """
+    payload = {
+        "T": CARTESIAN_DIRECT_TYPE,
+        "x": _finite_number(x_mm, "x_mm"),
+        "y": _finite_number(y_mm, "y_mm"),
+        "z": _finite_number(z_mm, "z_mm"),
+        "t": _finite_number(t_rad, "t_rad"),
     }
     return (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
 
