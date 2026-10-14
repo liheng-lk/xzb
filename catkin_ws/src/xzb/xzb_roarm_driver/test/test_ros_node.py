@@ -38,21 +38,27 @@ class FakeRospy:
     def logdebug(self,*a): pass
 class FakeTransport:
     instances=[]
-    def __init__(self,port,baud_rate=115200,timeout=.2,reconnect_interval=1.,**k): self.port=port; self.baud_rate=baud_rate; self.connected=True; self.writes=[]; self.__class__.instances.append(self)
+    def __init__(self,port,baud_rate=115200,timeout=.2,reconnect_interval=1.,**k):
+        self.port=port; self.baud_rate=baud_rate; self.connected=True; self.writes=[]; self.on_write=None; self.__class__.instances.append(self)
     def start(self): pass
     def stop(self): self.connected=False
-    def write(self,p): self.writes.append(p)
+    def write(self,p):
+        self.writes.append(p)
+        if self.on_write is not None: self.on_write(p)
 MESSAGE_TYPES={'Bool':Bool,'String':String,'JointState':JointState,'Pose':Pose}
 
 class RosNodeTests(unittest.TestCase):
     def setUp(self):
         FakeTransport.instances=[]; self.ros=FakeRospy(); self.node=RoArmRosNode(rospy_module=self.ros,message_types=MESSAGE_TYPES,transport_factory=FakeTransport); self.transport=FakeTransport.instances[-1]
     def test_topics_and_state(self):
-        self.assertEqual(set(self.ros.publishers),{'/roarm/connected','/roarm/joint_states','/roarm/controller_joint_states','/roarm/pose','/roarm/raw_response'})
+        self.assertEqual(set(self.ros.publishers),{'/roarm/connected','/roarm/joint_states','/roarm/controller_joint_states','/roarm/pose','/roarm/raw_response','/roarm/raw_tx'})
         line='{"T":1051,"x":515.88,"y":-3.95,"z":-49.68,"b":-0.01,"s":1.59,"e":0.03,"t":1.69,"torB":36,"torS":104,"torE":92,"torH":300}'
         self.transport.on_line(line)
         self.assertEqual(self.ros.publishers['/roarm/controller_joint_states'].messages[-1].position,[-0.01,1.59,0.03,1.69])
-    def test_timer_remains_state_query(self):
-        self.ros.timer.callback(None); self.assertEqual(self.transport.writes,[b'{"T":105}\n'])
+    def test_timer_remains_state_query_and_audits_tx(self):
+        self.ros.timer.callback(None)
+        self.assertEqual(self.transport.writes,[b'{"T":105}\n'])
+        tx = self.ros.publishers['/roarm/raw_tx'].messages
+        self.assertEqual([msg.data for msg in tx], ['{"T":105}'])
 
 if __name__ == '__main__': unittest.main()
