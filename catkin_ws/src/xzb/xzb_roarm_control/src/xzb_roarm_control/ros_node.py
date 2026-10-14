@@ -1,7 +1,7 @@
 import math
 
 from .control_core import ArmControlCore, ControlRejected
-from .joint_mapping import JOINT_NAMES, controller_to_ros, ros_to_controller
+from .joint_mapping import JOINT_NAMES, controller_to_ros, ros_joint_to_controller, ros_to_controller
 from .safety import ArmSafety, SafetyError
 
 
@@ -13,7 +13,7 @@ def _load_ros():
     from std_srvs.srv import SetBool, SetBoolResponse, Trigger, TriggerResponse
     from xzb_interfaces.msg import ArmStatus
     from xzb_interfaces.srv import (
-        ComputeArmFK, ComputeArmFKResponse, DriverJointCommand,
+        ComputeArmFK, ComputeArmFKResponse, DriverJointCommand, DriverSingleJointCommand,
         MoveArmCartesian, MoveArmCartesianResponse, MoveArmJoints, MoveArmJointsResponse,
         SetArmGripper, SetArmGripperResponse, SolveArmIK, SolveArmIKResponse,
     )
@@ -32,7 +32,13 @@ class RoArmControlNode:
             state_limit_margin=rospy.get_param("~state_limit_margin", 0.1),
         )
         self.driver = rospy.ServiceProxy("/roarm/driver/joint_command", types["DriverJointCommand"])
-        self.core = ArmControlCore(self._dispatch, safety=safety, state_timeout=rospy.get_param("~state_timeout", 1.0))
+        self.single_driver = rospy.ServiceProxy("/roarm/driver/single_joint_command", types["DriverSingleJointCommand"])
+        self.core = ArmControlCore(
+            self._dispatch,
+            single_dispatcher=self._dispatch_single,
+            safety=safety,
+            state_timeout=rospy.get_param("~state_timeout", 1.0),
+        )
         self.joint_pub = rospy.Publisher("/joint_states", types["JointState"], queue_size=10)
         self.tool_pose_pub = rospy.Publisher("/roarm/tool_pose", types["PoseStamped"], queue_size=10)
         self.status_pub = rospy.Publisher("/roarm/status", types["ArmStatus"], queue_size=5, latch=True)
@@ -51,6 +57,12 @@ class RoArmControlNode:
         c = ros_to_controller(target)
         # Protocol spd remains 0 until its physical scale is characterized.
         response = self.driver(base=c[0], shoulder=c[1], elbow=c[2], hand=c[3], speed=0.0, acceleration=10.0)
+        return response.accepted
+
+    def _dispatch_single(self, joint_index, target_value, speed_scale):
+        controller_rad = ros_joint_to_controller(joint_index, target_value)
+        # Firmware joint IDs are 1=base, 2=shoulder, 3=elbow, 4=EOAT.
+        response = self.single_driver(joint=int(joint_index) + 1, rad=controller_rad, speed=0.0, acceleration=10.0)
         return response.accepted
 
     def _publish_status(self, state="idle", detail=""):
