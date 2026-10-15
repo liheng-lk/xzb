@@ -20,7 +20,7 @@ class CommandResult:
 class ArmControlCore:
     def __init__(self, dispatcher, single_dispatcher=None, cartesian_dispatcher=None,
                  safety=None, kinematics=None, state_timeout=1.0, clock=None,
-                 native_cartesian_t=3.14):
+                 native_cartesian_t=3.14, home_joints=(0.0, 0.0, 0.0)):
         self.dispatcher = dispatcher
         self.single_dispatcher = single_dispatcher
         self.cartesian_dispatcher = cartesian_dispatcher
@@ -29,6 +29,9 @@ class ArmControlCore:
         self.state_timeout = float(state_timeout)
         self.clock = clock or time.monotonic
         self.native_cartesian_t = float(native_cartesian_t)
+        self.home_joints = tuple(float(v) for v in home_joints)
+        if len(self.home_joints) != 3 or not all(math.isfinite(v) for v in self.home_joints):
+            raise ValueError("home_joints must contain 3 finite values")
         self.connected = False
         self.motion_enabled = False
         self.current_joints = None
@@ -115,6 +118,22 @@ class ArmControlCore:
         else:
             target = vals
         return self._dispatch_target(target, speed_scale)
+
+    def home(self, speed_scale=0.2):
+        """Move to the stable upright joint-space home pose.
+
+        Home is intentionally a joint-space command, not an XYZ return. The
+        positioning joints default to (0, 0, 0), which makes the arm links
+        straight/upright in the XZB model; the current gripper opening is kept.
+        Unlike ordinary engineering moves, home may span more than max_joint_step.
+        """
+        self._require_motion()
+        speed_scale = self._validate_speed_scale(speed_scale)
+        target = tuple(self.home_joints) + (float(self.current_joints[3]),)
+        target = tuple(self.safety.validate_joint_target(target))
+        if not bool(self.dispatcher(target, speed_scale)):
+            raise ControlRejected("driver rejected home command")
+        return CommandResult(True, target, "accepted home")
 
     def move_cartesian(self, target_xyz, relative=True, speed_scale=0.1):
         self._require_motion()
