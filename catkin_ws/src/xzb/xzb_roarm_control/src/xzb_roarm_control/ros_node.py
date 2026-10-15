@@ -42,6 +42,7 @@ class RoArmControlNode:
             safety=safety,
             state_timeout=rospy.get_param("~state_timeout", 1.0),
             native_cartesian_t=rospy.get_param("~native_cartesian_t", 3.14),
+            home_joints=rospy.get_param("~home_joints", [0.0, 0.0, 0.0]),
         )
         self.joint_pub = rospy.Publisher("/joint_states", types["JointState"], queue_size=10)
         self.tool_pose_pub = rospy.Publisher("/roarm/tool_pose", types["PoseStamped"], queue_size=10)
@@ -51,6 +52,7 @@ class RoArmControlNode:
         rospy.Subscriber("/roarm/position", types["Point"], self._controller_position_cb, queue_size=10)
         rospy.Service("/roarm/motion_enable", types["SetBool"], self._enable_cb)
         rospy.Service("/roarm/soft_stop", types["Trigger"], self._stop_cb)
+        rospy.Service("/roarm/home", types["Trigger"], self._home_cb)
         rospy.Service("/roarm/move_joints", types["MoveArmJoints"], self._move_joints_cb)
         rospy.Service("/roarm/move_cartesian", types["MoveArmCartesian"], self._move_cartesian_cb)
         rospy.Service("/roarm/set_gripper", types["SetArmGripper"], self._gripper_cb)
@@ -137,6 +139,14 @@ class RoArmControlNode:
         text = self.core.soft_stop()
         self._publish_status("stopped", text)
         return self.types["TriggerResponse"](success=True, message=text)
+
+    def _home_cb(self, _req):
+        try:
+            result = self.core.home()
+            self._publish_status("homing", "joint-space upright home command sent")
+            return self.types["TriggerResponse"](success=True, message=result.message)
+        except (ControlRejected, SafetyError, ValueError) as exc:
+            return self.types["TriggerResponse"](success=False, message=str(exc))
 
     def _move_joints_cb(self, req):
         response = self.types["MoveArmJointsResponse"]()
