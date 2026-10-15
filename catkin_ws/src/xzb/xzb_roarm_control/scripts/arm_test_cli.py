@@ -10,7 +10,7 @@ from xzb_interfaces.srv import ComputeArmFK, MoveArmCartesian, MoveArmJoints, Se
 def main():
     p = argparse.ArgumentParser(description="RoArm ROS1 Noetic control client")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("status"); sub.add_parser("enable"); sub.add_parser("disable"); sub.add_parser("soft-stop")
+    sub.add_parser("status"); sub.add_parser("enable"); sub.add_parser("disable"); sub.add_parser("soft-stop"); sub.add_parser("home")
     j = sub.add_parser("joint-delta")
     for name in ("base", "shoulder", "elbow", "gripper"):
         j.add_argument("--" + name, type=float, default=0.0)
@@ -32,6 +32,8 @@ def main():
         print(rospy.ServiceProxy("/roarm/motion_enable", SetBool)(a.cmd == "enable")); return
     if a.cmd == "soft-stop":
         print(rospy.ServiceProxy("/roarm/soft_stop", Trigger)()); return
+    if a.cmd == "home":
+        print(rospy.ServiceProxy("/roarm/home", Trigger)()); return
     if a.cmd == "joint-delta":
         print(rospy.ServiceProxy("/roarm/move_joints", MoveArmJoints)([a.base, a.shoulder, a.elbow, a.gripper], True, a.speed)); return
     if a.cmd == "cart-delta":
