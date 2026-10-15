@@ -42,6 +42,14 @@ class CoreTests(unittest.TestCase):
         c.set_connected(True); c.update_joint_state((0,0,1.5,.7)); c.set_motion_enabled(True)
         result=c.move_joints((.01,.01,0,0),True)
         self.assertTrue(result.accepted); self.assertEqual(single,[]); self.assertEqual(full[-1],(.01,.01,1.5,.7))
+    def test_home_commands_straight_upright_pose_and_preserves_gripper(self):
+        full=[]; now=[0.0]
+        c=ArmControlCore(lambda t,s:full.append((tuple(t),s)) or True,clock=lambda:now[0])
+        c.set_connected(True); c.update_joint_state((.4,-.6,1.5,.7)); c.set_motion_enabled(True)
+        result=c.home()
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.target,(0.0,0.0,0.0,.7))
+        self.assertEqual(full,[((0.0,0.0,0.0,.7),.2)])
     def test_native_cartesian_delta_uses_controller_xyz_and_not_host_ik(self):
         full=[]; native=[]; now=[0.0]
         c=ArmControlCore(
